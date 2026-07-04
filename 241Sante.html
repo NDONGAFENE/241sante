@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>241 Santé — Gestion de structure sanitaire</title>
+<style>
+:root{
+  --grn:#0E5A3C; --grn2:#0A6E45; --grn-d:#083C29; --gold:#D4A017; --gold-d:#B8890C;
+  --bg:#F4F6F5; --card:#FFFFFF; --ink:#12241B; --muted:#6B8577; --line:#E4EAE6;
+  --red:#D64541; --blue:#2F80B4; --orange:#E08A2B; --ok:#2E9E5B;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit}
+.hidden{display:none!important}
+
+/* ===== OVERLAYS (login / licence) ===== */
+.overlay{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(1100px 550px at 70% -10%,rgba(14,90,60,.35),transparent 60%),linear-gradient(160deg,#0b3d29,#062015);}
+.flagbar{height:6px;display:flex}.flagbar i{flex:1}.flagbar .v{background:#009a44}.flagbar .j{background:var(--gold)}.flagbar .b{background:#003399}
+.auth{background:#fff;border-radius:18px;max-width:430px;width:100%;padding:34px 30px;box-shadow:0 26px 70px rgba(0,0,0,.4)}
+.auth .logo{display:block;width:78px;height:78px;object-fit:contain;margin:0 auto 12px;border-radius:14px}
+.auth h1{text-align:center;font-size:20px;color:var(--grn);letter-spacing:.3px}
+.auth .sub{text-align:center;color:var(--muted);font-size:12px;margin:4px 0 18px}
+.auth label{display:block;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px}
+.auth input,.auth select{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font-size:14px;outline:none}
+.auth input:focus,.auth select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.16)}
+.auth .btn{width:100%;margin-top:16px;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--grn),var(--grn2));color:#fff;font-size:14px;font-weight:700}
+.auth .btn.gold{background:linear-gradient(135deg,var(--gold-d),var(--gold));color:#3a2c02}
+.auth .msg{padding:10px 12px;border-radius:9px;font-size:13px;margin-top:12px}
+.auth .msg.err{background:rgba(214,69,65,.1);color:#a4302c}
+.auth .msg.ok{background:rgba(46,158,91,.12);color:#1c6c3d}
+.auth .small{font-size:11px;color:var(--muted);text-align:center;margin-top:14px}
+.auth .state{text-align:center;padding:11px;border-radius:10px;font-weight:700;font-size:14px;margin-bottom:6px}
+.auth .state.okk{background:rgba(46,158,91,.12);color:#1c6c3d}.auth .state.kok{background:rgba(214,69,65,.1);color:#a4302c}
+.auth details{margin-top:8px}.auth summary{cursor:pointer;color:var(--muted);font-size:12px}
+.keybox{background:#f7faf8;border:1px dashed var(--gold);border-radius:9px;padding:12px;text-align:center;font-size:18px;letter-spacing:2px;color:var(--grn);margin-top:10px;font-family:monospace}
+.linklike{background:none;border:none;color:var(--grn);text-decoration:underline;font-size:12px;margin-top:12px;display:block;width:100%}
+
+/* ===== APP SHELL ===== */
+.app{display:flex;min-height:100vh}
+.side{width:236px;background:linear-gradient(180deg,var(--grn),var(--grn-d));color:#dfeee7;flex-shrink:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.side .bd{display:flex;align-items:center;gap:10px;padding:16px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.side .bd img{width:40px;height:40px;border-radius:9px;object-fit:contain;background:#fff;padding:2px}
+.side .bd .t1{font-size:15px;font-weight:800;color:#fff;line-height:1}
+.side .bd .t2{font-size:9.5px;color:#a9cbb9;margin-top:3px}
+.nav{flex:1;overflow-y:auto;padding:8px}
+.nav a{display:flex;align-items:center;gap:10px;padding:10px 12px;color:#cfe4d8;text-decoration:none;border-radius:9px;font-size:13px;font-weight:600;margin-bottom:2px}
+.nav a .ic{width:20px;text-align:center}
+.nav a:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav a.on{background:var(--gold);color:#3a2c02}
+.side .foot{padding:10px 14px;border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:#a9cbb9}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.top{height:60px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 20px;gap:14px;position:sticky;top:0;z-index:20}
+.top .htitle{font-size:16px;font-weight:800}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.top .ubadge{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 10px;font-size:11px}
+.top .ubadge b{color:var(--grn)}
+.top .role{color:var(--gold-d);font-weight:700}
+.top .lo{padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--red);font-size:11px;font-weight:600}
+.wrap{padding:22px;max-width:1180px;width:100%;margin:0 auto}
+.trial{background:rgba(212,160,23,.12);border:1px solid rgba(212,160,23,.35);color:#8a6a08;padding:8px 14px;border-radius:10px;font-size:12px;margin-bottom:14px;font-weight:600}
+
+/* ===== ELEMENTS ===== */
+.head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+.head h1{font-size:20px}.head .s{font-size:12px;color:var(--muted);margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 4px 14px rgba(16,40,28,.05)}
+.card+.card{margin-top:16px}
+.ctitle{font-size:13px;font-weight:800;color:var(--grn);margin-bottom:14px;letter-spacing:.2px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 4px 14px rgba(16,40,28,.05);position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grn)}
+.kpi .n{font-size:25px;font-weight:800;line-height:1}
+.kpi .l{font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.3px}
+.kpi.g .n{color:var(--ok)}.kpi.j .n{color:var(--gold-d)}.kpi.r .n{color:var(--red)}.kpi.b .n{color:var(--blue)}.kpi.v .n{color:var(--grn)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}.side{width:64px}.side .bd .tx,.nav a .lbl,.side .foot{display:none}.nav a{justify-content:center}}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:9px 11px;color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--line)}
+td{padding:9px 11px;border-bottom:1px solid var(--line)}
+tr:hover td{background:#f7faf8}
+.badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.bg{background:rgba(46,158,91,.14);color:#1c6c3d}.br{background:rgba(214,69,65,.12);color:#a4302c}
+.bj{background:rgba(212,160,23,.16);color:#8a6a08}.bb{background:rgba(47,128,180,.12);color:#245e83}.bgy{background:#eef1ef;color:var(--muted)}
+.btn{padding:9px 15px;border:none;border-radius:9px;font-size:12.5px;font-weight:700;background:#eef1ef;color:var(--ink)}
+.btn:hover{filter:brightness(.97)}
+.btn.p{background:linear-gradient(135deg,var(--grn),var(--grn2));color:#fff}
+.btn.gold{background:linear-gradient(135deg,var(--gold-d),var(--gold));color:#3a2c02}
+.btn.dgr{background:rgba(214,69,65,.12);color:var(--red)}
+.btn.sm{padding:5px 9px;font-size:11px;border-radius:7px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.fld{display:flex;flex-direction:column;gap:5px}.fld.full{grid-column:1/-1}
+.fld label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.fld input,.fld select,.fld textarea{padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:13px;outline:none;background:#fff}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.14)}
+.fld textarea{resize:vertical;min-height:60px}
+.search{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search input,.search select{padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:13px;background:#fff}
+.tag{background:#eef1ef;border:1px solid var(--line);border-radius:7px;padding:5px 10px;font-size:11px;display:inline-block}
+
+/* ===== MODAL ===== */
+.modal{position:fixed;inset:0;z-index:1500;background:rgba(8,20,14,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto}
+.modal .box{background:#fff;border-radius:16px;max-width:760px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.modal .mh{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal .mh h3{font-size:16px;color:var(--grn)}
+.modal .mx{background:none;border:none;font-size:22px;color:var(--muted);line-height:1}
+.modal .mb{padding:20px}
+.modal .mf{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--grn-d);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:3000;box-shadow:0 10px 30px rgba(0,0,0,.3);opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+.pill{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ===== LICENCE (verrou + activation + générateur) ===== -->
+<div id="ovLicence" class="overlay hidden">
+  <div style="max-width:430px;width:100%">
+    <div class="flagbar" style="border-radius:12px 12px 0 0"><i class="v"></i><i class="j"></i><i class="b"></i></div>
+    <div class="auth" style="border-radius:0 0 18px 18px">
+      <img class="logo" id="licLogo" alt="">
+      <h1>Licence du logiciel</h1>
+      <div class="sub">241 Santé — Pro-Technologie</div>
+      <div id="licState" class="state">—</div>
+      <div id="licKey" class="small"></div>
+      <label>Saisir une clé de licence</label>
+      <input id="licInput" placeholder="241-XXXX-XXXX-XXX" style="text-transform:uppercase;text-align:center;font-family:monospace">
+      <button class="btn gold" onclick="activerLicence()">Activer la licence</button>
+      <div id="licMsg"></div>
+      <details id="genDetails">
+        <summary>🛠 Générateur de clés (réservé)</summary>
+        <label>Mot de passe du générateur</label>
+        <input id="genPwd" type="password" placeholder="•••••••••">
+        <label>Type de licence</label>
+        <select id="genPlan">
+          <option value="E">Essai 30 jours</option>
+          <option value="D" selected>Durée (mois)</option>
+          <option value="I">Illimitée</option>
+        </select>
+        <label>Durée en mois (si « Durée »)</label>
+        <input id="genMois" type="number" value="12" min="1">
+        <button class="btn" style="width:100%;margin-top:12px;background:linear-gradient(135deg,var(--grn),var(--grn2));color:#fff" onclick="genererLicence()">Générer une clé</button>
+        <div id="genOut"></div>
+      </details>
+      <button id="licBack" class="linklike hidden" onclick="fermerLicence()">← Retour à l'application</button>
+      <div style="margin-top:16px;background:#f2f8f4;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:11px;font-weight:800;color:var(--grn);letter-spacing:.4px;text-transform:uppercase">Activation & assistance — Pro-Technologie</div>
+        <div style="font-size:14px;font-weight:800;margin-top:6px">📞 077 92 54 58 &nbsp;·&nbsp; 066 92 54 58</div>
+        <div style="font-size:12px;margin-top:4px"><a href="mailto:ndongafene@protechnologie.com" style="color:var(--grn);font-weight:700">ndongafene@protechnologie.com</a></div>
+        <div style="font-size:10.5px;color:var(--muted);margin-top:5px">Contactez-nous pour obtenir votre clé d'activation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONNEXION ===== -->
+<div id="ovLogin" class="overlay hidden">
+  <div style="max-width:430px;width:100%">
+    <div class="flagbar" style="border-radius:12px 12px 0 0"><i class="v"></i><i class="j"></i><i class="b"></i></div>
+    <div class="auth" style="border-radius:0 0 18px 18px">
+      <img class="logo" id="loginLogo" alt="">
+      <h1 id="loginNom">241 Santé</h1>
+      <div class="sub" id="loginSub">Gestion de structure sanitaire</div>
+      <label>Identifiant</label>
+      <input id="loginUser" placeholder="Ex : admin" autofocus>
+      <label>Mot de passe</label>
+      <input id="loginPwd" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')faireLogin()">
+      <button class="btn" onclick="faireLogin()">Accéder au système</button>
+      <div id="loginMsg"></div>
+      <div id="srvInfo" class="small" style="margin-top:10px"></div>
+      <button class="linklike" onclick="configServeur()">⚙ Mode réseau (serveur)</button>
+      <div class="small">© Pro-Technologie · Logiciel sous licence<br>📞 077 92 54 58 · 066 92 54 58 · <a href="mailto:ndongafene@protechnologie.com" style="color:var(--grn)">ndongafene@protechnologie.com</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APPLICATION ===== -->
+<div id="app" class="app hidden">
+  <aside class="side">
+    <div class="bd"><img id="sideLogo" alt=""><div class="tx"><div class="t1">241 Santé</div><div class="t2" id="sideEtab">Structure sanitaire</div></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot">v1.0 · Pro-Technologie<br>📞 077 92 54 58<br>📞 066 92 54 58</div>
+  </aside>
+  <div class="main">
+    <div class="top">
+      <div class="htitle" id="pageTitle">Tableau de bord</div>
+      <div class="right">
+        <div class="ubadge"><b id="topUser">—</b> · <span class="role" id="topRole">—</span></div>
+        <button class="lo" onclick="logout()">Déconnexion</button>
+      </div>
+    </div>
+    <div class="wrap">
+      <div id="trialBanner" class="trial hidden"></div>
+      <div id="view"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALE ===== -->
+<div id="modal" class="modal hidden">
+  <div class="box">
+    <div class="mh"><h3 id="modalTitle">Titre</h3><button class="mx" onclick="closeModal()">×</button></div>
+    <div class="mb" id="modalBody"></div>
+    <div class="mf"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn p" id="modalOk">Valider</button></div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+/* ============ 241 SANTÉ — moteur ============ */
+const LOGO = "data:image/png;base64,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";
+const LADMIN = "protechnologiedecedric";
+const LSECRET = "mes filles adorees";
+const PREFIX = "241-";
+const TRIAL = 30;
+const DBKEY = "sante241_db";
+
+/* -- Assurances partenaires (Gabon) -- */
+const ASSURANCES = [
+  {nom:"CNAMGS",type:"Régime Obligatoire",taux:80},
+  {nom:"CPPF",type:"Régime Obligatoire",taux:85},
+  {nom:"ASCOMA Gabon",type:"Assurance Privée",taux:80},
+  {nom:"SUNU Assurances Gabon",type:"Assurance Privée",taux:75},
+  {nom:"ASSINCO",type:"Assurance Privée",taux:75},
+  {nom:"OGAR",type:"Assurance Privée",taux:75},
+  {nom:"NSIA Assurances Gabon",type:"Assurance Privée",taux:80},
+  {nom:"Sanlam Gabon",type:"Assurance Privée",taux:70},
+  {nom:"AXA Gabon",type:"Assurance Privée",taux:80},
+  {nom:"WAFA Assurances Vie",type:"Assurance Vie",taux:65},
+  {nom:"SAHAM Assurance",type:"Assurance Privée",taux:70},
+  {nom:"SAMBA",type:"Micro-assurance",taux:50},
+  {nom:"Employeur / Convention",type:"Convention",taux:100},
+  {nom:"Particulier sans assurance",type:"Aucune",taux:0},
+];
+/* -- Actes / tarifs (indicatifs, F CFA) -- */
+const ACTES = [
+  {cat:"Consultation",code:"CS01",nom:"Consultation générale",prix:5000},
+  {cat:"Consultation",code:"CS02",nom:"Consultation spécialisée",prix:15000},
+  {cat:"Consultation",code:"CS03",nom:"Consultation d'urgence",prix:10000},
+  {cat:"Laboratoire",code:"LB01",nom:"Goutte épaisse (paludisme)",prix:2500},
+  {cat:"Laboratoire",code:"LB02",nom:"NFS (numération)",prix:6000},
+  {cat:"Laboratoire",code:"LB03",nom:"Glycémie",prix:3000},
+  {cat:"Laboratoire",code:"LB04",nom:"Test VIH",prix:4000},
+  {cat:"Laboratoire",code:"LB05",nom:"Widal (typhoïde)",prix:5000},
+  {cat:"Laboratoire",code:"LB06",nom:"Groupe sanguin",prix:3500},
+  {cat:"Imagerie",code:"IM01",nom:"Radiographie",prix:15000},
+  {cat:"Imagerie",code:"IM02",nom:"Échographie",prix:20000},
+  {cat:"Soins",code:"SO01",nom:"Pansement simple",prix:2000},
+  {cat:"Soins",code:"SO02",nom:"Injection",prix:1500},
+  {cat:"Soins",code:"SO03",nom:"Perfusion",prix:5000},
+  {cat:"Soins",code:"SO04",nom:"Suture",prix:8000},
+  {cat:"Hospitalisation",code:"HO01",nom:"Journée chambre commune",prix:10000},
+  {cat:"Hospitalisation",code:"HO02",nom:"Journée chambre privée",prix:25000},
+  {cat:"Maternité",code:"MA01",nom:"Accouchement simple",prix:50000},
+  {cat:"Maternité",code:"MA02",nom:"Consultation prénatale",prix:6000},
+  {cat:"Pharmacie",code:"PH01",nom:"Médicaments (forfait)",prix:0},
+];
+const PATHOS_DEFAUT = [
+  ["Paludisme simple","Infectieuse"],["Paludisme grave","Infectieuse"],["Fièvre typhoïde","Infectieuse"],
+  ["Infection respiratoire aiguë","Infectieuse"],["Gastro-entérite","Infectieuse"],["Infection urinaire","Infectieuse"],
+  ["Angine","ORL"],["Otite","ORL"],["Bronchite","Respiratoire"],["Asthme","Respiratoire"],
+  ["Hypertension artérielle","Chronique"],["Diabète","Chronique"],["Anémie","Chronique"],["Drépanocytose","Chronique"],
+  ["VIH / SIDA","Chronique"],["Tuberculose","Infectieuse"],["Hépatite virale","Infectieuse"],["Parasitose intestinale","Infectieuse"],
+  ["Dermatose","Dermatologie"],["Conjonctivite","Ophtalmologie"],["Plaie / Traumatisme","Traumatologie"],
+  ["Suivi de grossesse","Maternité"],["Malnutrition","Pédiatrie"],["Rougeole","Pédiatrie"],
+];
+const ROLES = ["Directeur","Médecin","Infirmier","Caissier","Laborantin"];
+const MODULES = [
+  {id:"dashboard",label:"Tableau de bord",ic:"🏠"},
+  {id:"patients",label:"Patients",ic:"👤"},
+  {id:"consultations",label:"Consultations",ic:"🩺"},
+  {id:"rdv",label:"Rendez-vous",ic:"📅"},
+  {id:"hospi",label:"Hospitalisations",ic:"🛏"},
+  {id:"factures",label:"Factures",ic:"🧾"},
+  {id:"pharmacie",label:"Pharmacie",ic:"💊"},
+  {id:"pathologies",label:"Pathologies",ic:"🦠"},
+  {id:"rapports",label:"Rapports",ic:"📊"},
+  {id:"users",label:"Utilisateurs",ic:"👥"},
+  {id:"params",label:"Paramètres",ic:"⚙️"},
+  {id:"licence",label:"Licence",ic:"🔑"},
+];
+const ACCESS = {
+  "Directeur": MODULES.map(m=>m.id),
+  "Médecin":   ["dashboard","patients","consultations","rdv","hospi","pathologies","rapports"],
+  "Infirmier": ["dashboard","patients","consultations","rdv","hospi","pharmacie"],
+  "Caissier":  ["dashboard","patients","factures"],
+  "Laborantin":["dashboard","patients","consultations"],
+};
+
+/* ============ Base de données ============ */
+let DB, SESSION=null, CURRENT="dashboard";
+function seedDB(){
+  return {
+    etab:{nom:"", medecinChef:"", titreMedecin:"Médecin Chef", ville:"", province:"", tel:"", tel2:"", email:"", bp:"", devise:"F CFA", logo:""},
+    users:[{id:"u1", nom:"Administrateur", login:"admin", role:"Directeur", pwd:"admin"}],
+    patients:[], consultations:[], rdv:[], hospi:[], factures:[], pharmacie:[],
+    pathologies: PATHOS_DEFAUT.map((p,i)=>({id:"pa"+(i+1), nom:p[0], cat:p[1], actif:true})),
+    license:{plan:"", key:"", exp:0, trialStart: today()},
+    seq:{patient:1, facture:1, cons:1},
+  };
+}
+function loadDB(){
+  try{ DB=JSON.parse(localStorage.getItem(DBKEY)); }catch(e){ DB=null; }
+  if(!DB){ DB=seedDB(); saveDB(); }
+  if(!DB.license) DB.license={plan:"",key:"",exp:0,trialStart:today()};
+  if(DB.license.trialStart==null) DB.license.trialStart=today();
+}
+function saveDB(){ localStorage.setItem(DBKEY, JSON.stringify(DB)); if(NET.on&&NET.token) netSchedulePush(); }
+
+/* ============ Licence (schéma Pro-Technologie) ============ */
+function today(){ return Math.floor(Date.now()/86400000); }
+function b36(n,len){ let s=Math.abs(Math.floor(n)).toString(36).toUpperCase(); while(s.length<len)s="0"+s; return s.slice(-len); }
+function _sum(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; } return h; }
+function makeKey(plan,days){
+  const exp = plan==="I" ? 0 : today()+days;
+  const inner = plan + b36(exp,4) + b36(Math.floor(Math.random()*1296),2);
+  const chk = b36(_sum(inner+LSECRET)%1679616,4);
+  const body = (inner+chk).toUpperCase();
+  return PREFIX + body.slice(0,4)+"-"+body.slice(4,8)+"-"+body.slice(8,11);
+}
+function parseKey(key){
+  try{
+    let k=(key||"").toUpperCase().trim();
+    if(k.startsWith(PREFIX)) k=k.slice(PREFIX.length);
+    const b=k.replace(/[^A-Z0-9]/g,"");
+    if(b.length!==11) return {valid:false};
+    const inner=b.slice(0,7), chk=b.slice(7,11);
+    if(b36(_sum(inner+LSECRET)%1679616,4)!==chk) return {valid:false};
+    const plan=inner[0];
+    if(!["E","D","I"].includes(plan)) return {valid:false};
+    const exp=parseInt(inner.slice(1,5),36);
+    return {valid:true,plan,exp};
+  }catch(e){ return {valid:false}; }
+}
+function licState(){
+  const L=DB.license;
+  if(L.plan==="I") return {ok:true, msg:"Licence illimitée"};
+  if(L.plan==="D"||L.plan==="E"){ const left=(L.exp||0)-today(); return {ok:left>=0, jours:left, msg: left>=0 ? ("Licence active — "+left+" jour(s) restant(s)") : "Licence expirée"}; }
+  const left=TRIAL-(today()-(L.trialStart||today()));
+  return {ok:left>=0, jours:left, essai:true, msg: left>=0 ? ("Période d'essai — "+left+" jour(s) restant(s)") : "Période d'essai terminée"};
+}
+function applyKey(key){
+  const r=parseKey(key); if(!r.valid) return false;
+  DB.license.plan=r.plan; DB.license.exp = r.plan==="I"?0:r.exp; DB.license.key=(key||"").toUpperCase().trim(); saveDB(); return true;
+}
+
+/* ============ Helpers ============ */
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=p=>p+Math.random().toString(36).slice(2,9);
+const money=n=>(Math.round(+n||0)).toLocaleString("fr-FR")+" "+DB.etab.devise;
+const fdate=d=>{ if(!d)return "—"; try{return new Date(d).toLocaleDateString("fr-FR");}catch(e){return d;} };
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2200); }
+function openModal(title,bodyHTML,okFn,okLabel){
+  $("#modalTitle").textContent=title; $("#modalBody").innerHTML=bodyHTML;
+  const ok=$("#modalOk"); ok.textContent=okLabel||"Valider"; ok.onclick=okFn;
+  ok.classList.toggle("hidden",!okFn); $("#modal").classList.remove("hidden");
+}
+function closeModal(){ $("#modal").classList.add("hidden"); }
+function val(id){ const e=document.getElementById(id); return e?e.value.trim():""; }
+function nextNum(prefix,seqKey){ const n=DB.seq[seqKey]||1; DB.seq[seqKey]=n+1; return prefix+"-"+new Date().getFullYear()+"-"+String(n).padStart(5,"0"); }
+function assurTaux(nom){ const a=ASSURANCES.find(x=>x.nom===nom); return a?a.taux:0; }
+
+/* ============ MODE RÉSEAU (serveur de données partagées) ============ */
+let NET={on:false,url:"",token:"",version:0,timer:null,pushing:false};
+function netLoadCfg(){ try{ const c=JSON.parse(localStorage.getItem("sante241_net")||"{}"); NET.on=!!c.on; NET.url=(c.url||"").replace(/\/+$/,""); }catch(e){} }
+function netSaveCfg(){ localStorage.setItem("sante241_net", JSON.stringify({on:NET.on,url:NET.url})); }
+async function netFetch(path,opt){ opt=opt||{}; opt.headers=Object.assign({"Content-Type":"application/json"},opt.headers||{});
+  if(NET.token) opt.headers["Authorization"]="Bearer "+NET.token;
+  const r=await fetch(NET.url+path,opt); const j=await r.json().catch(()=>({}));
+  if(!r.ok){ const e=new Error(j.error||("Erreur "+r.status)); e.status=r.status; e.payload=j; throw e; }
+  return j; }
+function netSchedulePush(){ clearTimeout(NET.timer); NET.timer=setTimeout(netPush,800); }
+async function netPush(){
+  if(!NET.on||!NET.token||NET.pushing) return;
+  NET.pushing=true;
+  try{
+    const r=await netFetch("/api/data",{method:"POST",body:JSON.stringify({version:NET.version,data:DB})});
+    NET.version=r.version;
+  }catch(e){
+    if(e.status===409){ // un autre poste a enregistré avant nous : on recharge
+      NET.version=e.payload.version; DB=e.payload.data||DB; localStorage.setItem(DBKEY,JSON.stringify(DB));
+      toast("Données mises à jour par un autre poste — écran actualisé.");
+      if(SESSION) route(CURRENT);
+    } else if(e.status===401){ toast("Session expirée — reconnectez-vous."); logout(); }
+    else { toast("Serveur injoignable — réessai automatique."); netSchedulePush(); }
+  }finally{ NET.pushing=false; }
+}
+async function netPull(){
+  const r=await netFetch("/api/data");
+  NET.version=r.version;
+  if(r.data){ DB=r.data; }
+  else { DB=seedDB(); await netFetch("/api/data",{method:"POST",body:JSON.stringify({version:NET.version,data:DB})}).then(x=>NET.version=x.version).catch(()=>{}); }
+  localStorage.setItem(DBKEY,JSON.stringify(DB));
+}
+function configServeur(){
+  netLoadCfg();
+  openModal("Mode réseau (serveur)",`
+    <div class="row">
+      <div class="fld full"><label>Adresse du serveur</label><input id="net_url" placeholder="http://192.168.1.10:4020 ou https://votre-domaine" value="${esc(NET.url)}"></div>
+      <div class="fld full"><label>Mode</label><select id="net_on"><option value="0" ${NET.on?"":"selected"}>Local (données dans ce navigateur)</option><option value="1" ${NET.on?"selected":""}>Réseau (données partagées sur le serveur)</option></select></div>
+    </div>
+    <div class="s" style="margin-top:10px">En mode réseau, la connexion utilise les comptes du <b>serveur</b> (au départ : admin / admin123) et tous les postes voient les mêmes données.</div>`,
+    async ()=>{
+      NET.url=val("net_url").replace(/\/+$/,""); NET.on=val("net_on")==="1";
+      if(NET.on){ if(!NET.url){toast("Renseignez l'adresse du serveur.");return;}
+        try{ const h=await fetch(NET.url+"/api/health").then(r=>r.json()); if(!h.ok) throw 0;
+          netSaveCfg(); closeModal(); toast("Serveur trouvé : "+(h.structure||"OK")); showLogin();
+        }catch(e){ toast("Serveur injoignable à cette adresse."); }
+      } else { NET.token=""; netSaveCfg(); closeModal(); toast("Mode local activé."); showLogin(); }
+    },"Enregistrer");
+}
+</script>
+<script>
+/* ============ Démarrage & licence ============ */
+function boot(){
+  netLoadCfg();
+  loadDB();
+  [$("#licLogo"),$("#loginLogo"),$("#sideLogo")].forEach(i=>{ if(i)i.src=LOGO; });
+  if(!NET.on){ const st=licState(); if(!st.ok){ showLicence(); return; } }
+  showLogin();
+}
+function showLicence(){
+  $("#app").classList.add("hidden"); $("#ovLogin").classList.add("hidden");
+  const st=licState();
+  const el=$("#licState"); el.textContent=st.msg; el.className="state "+(st.ok?"okk":"kok");
+  $("#licKey").innerHTML = DB.license.key ? ("Clé active : <b>"+esc(DB.license.key)+"</b>") : "";
+  $("#licBack").classList.toggle("hidden",!st.ok);
+  $("#licMsg").innerHTML=""; $("#genOut").innerHTML="";
+  $("#ovLicence").classList.remove("hidden");
+}
+function fermerLicence(){ $("#ovLicence").classList.add("hidden"); if(SESSION) showApp(); else showLogin(); }
+function activerLicence(){
+  if(applyKey($("#licInput").value)){
+    $("#licMsg").innerHTML='<div class="msg ok">Licence activée. Merci.</div>';
+    setTimeout(showLicence,600);
+  } else { $("#licMsg").innerHTML='<div class="msg err">Clé de licence invalide.</div>'; }
+}
+function genererLicence(){
+  if($("#genPwd").value!==LADMIN){ $("#genOut").innerHTML='<div class="msg err">Mot de passe du générateur incorrect.</div>'; return; }
+  const plan=$("#genPlan").value; const mois=parseInt($("#genMois").value||"12",10)||12;
+  const days = plan==="E"?TRIAL : (plan==="D"?mois*30:0);
+  const k=makeKey(plan,days);
+  $("#genOut").innerHTML='<div class="keybox">'+k+'</div>';
+}
+
+/* ============ Connexion ============ */
+function showLogin(){
+  $("#app").classList.add("hidden"); $("#ovLicence").classList.add("hidden");
+  $("#loginNom").textContent = DB.etab.nom || "241 Santé";
+  $("#loginSub").textContent = DB.etab.medecinChef ? ("Dr "+DB.etab.medecinChef) : "Gestion de structure sanitaire";
+  if(DB.etab.logo) $("#loginLogo").src=DB.etab.logo;
+  $("#loginMsg").innerHTML=""; $("#loginPwd").value="";
+  const si=$("#srvInfo"); if(si) si.innerHTML = NET.on ? ("🌐 Mode réseau : <b>"+esc(NET.url)+"</b>") : "💻 Mode local (données dans ce navigateur)";
+  $("#ovLogin").classList.remove("hidden");
+}
+async function faireLogin(){
+  const u=$("#loginUser").value.trim(), p=$("#loginPwd").value;
+  if(NET.on){
+    try{
+      const r=await netFetch("/api/login",{method:"POST",body:JSON.stringify({login:u,password:p})});
+      NET.token=r.token; SESSION={id:"srv"+r.user.id,nom:r.user.nom,login:r.user.login,role:r.user.role};
+      await netPull();
+      const st=licState(); if(!st.ok){ showLicence(); return; }
+      showApp();
+    }catch(e){ $("#loginMsg").innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; }
+    return;
+  }
+  const user=DB.users.find(x=>x.login.toLowerCase()===u.toLowerCase() && x.pwd===p);
+  if(!user){ $("#loginMsg").innerHTML='<div class="msg err">Identifiant ou mot de passe incorrect.</div>'; return; }
+  SESSION=user; showApp();
+}
+function logout(){ if(NET.on&&NET.token){ netFetch("/api/logout",{method:"POST"}).catch(()=>{}); NET.token=""; } SESSION=null; showLogin(); }
+
+/* ============ Application ============ */
+function showApp(){
+  const st=licState(); if(!st.ok){ showLicence(); return; }
+  $("#ovLogin").classList.add("hidden"); $("#ovLicence").classList.add("hidden");
+  if(DB.etab.logo) $("#sideLogo").src=DB.etab.logo;
+  $("#sideEtab").textContent = DB.etab.nom || "Structure sanitaire";
+  $("#topUser").textContent = SESSION.nom || SESSION.login;
+  $("#topRole").textContent = SESSION.role;
+  buildNav();
+  const allowed=ACCESS[SESSION.role]||["dashboard"];
+  if(!allowed.includes(CURRENT)) CURRENT=allowed[0];
+  $("#app").classList.remove("hidden");
+  const b=$("#trialBanner");
+  if(st.essai){ b.classList.remove("hidden"); b.textContent="⏳ "+st.msg+" — pensez à activer votre licence."; }
+  else b.classList.add("hidden");
+  route(CURRENT);
+}
+function buildNav(){
+  const allowed=ACCESS[SESSION.role]||["dashboard"];
+  $("#nav").innerHTML = MODULES.filter(m=>allowed.includes(m.id)).map(m=>
+    `<a href="#" data-id="${m.id}" onclick="route('${m.id}');return false" class="${m.id===CURRENT?'on':''}"><span class="ic">${m.ic}</span><span class="lbl">${m.label}</span></a>`
+  ).join("");
+}
+function route(id){
+  const allowed=ACCESS[SESSION.role]||["dashboard"];
+  if(!allowed.includes(id)) return;
+  CURRENT=id;
+  $$("#nav a").forEach(a=>a.classList.toggle("on",a.dataset.id===id));
+  const m=MODULES.find(x=>x.id===id);
+  $("#pageTitle").textContent=m?m.label:"";
+  const V={dashboard:vDashboard,patients:vPatients,consultations:vConsultations,rdv:vRdv,hospi:vHospi,
+           factures:vFactures,pharmacie:vPharmacie,pathologies:vPathologies,rapports:vRapports,
+           users:vUsers,params:vParams,licence:vLicence};
+  ($("#view").innerHTML="") , (V[id]||(()=>{}))();
+}
+function openLicenceScreen(){ showLicence(); }
+</script>
+<script>
+/* ============ Utilitaires vue ============ */
+const todayISO=()=>new Date().toISOString().slice(0,10);
+const nowISO=()=>new Date().toISOString();
+function sameMonth(d){ if(!d)return false; const a=new Date(d),n=new Date(); return a.getFullYear()===n.getFullYear()&&a.getMonth()===n.getMonth(); }
+function sameDay(d){ if(!d)return false; return String(d).slice(0,10)===todayISO(); }
+function patName(id){ const p=DB.patients.find(x=>x.id===id); return p?(p.nom+" "+p.prenom):"—"; }
+function patNum(id){ const p=DB.patients.find(x=>x.id===id); return p?p.num:""; }
+function medDefaut(){ return DB.etab.medecinChef || ""; }
+function set(el){ return el; }
+
+/* ============ TABLEAU DE BORD ============ */
+function vDashboard(){
+  const consJour=DB.consultations.filter(c=>sameDay(c.date)).length;
+  const rdvJour=DB.rdv.filter(r=>r.dateRdv===todayISO() && r.statut!=="Annulé");
+  const impayees=DB.factures.filter(f=>f.statut!=="Réglé").length;
+  const recMois=DB.factures.filter(f=>sameMonth(f.date)).reduce((s,f)=>s+(+f.montantPaye||0),0);
+  const hospi=DB.hospi.filter(h=>h.statut==="En cours").length;
+  const alertes=DB.pharmacie.filter(p=>(+p.stock||0)<=(+p.stockMin||0)).length;
+  const derniers=DB.patients.slice(-5).reverse();
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Bonjour, ${esc(SESSION.nom||SESSION.login)}</h1>
+      <div class="s">${esc(DB.etab.nom||"Structure sanitaire")}${DB.etab.medecinChef?" · Dr "+esc(DB.etab.medecinChef):""}</div></div></div>
+    <div class="kpis">
+      <div class="kpi v"><div class="n">${DB.patients.length}</div><div class="l">Patients</div></div>
+      <div class="kpi b"><div class="n">${hospi}</div><div class="l">Hospitalisés</div></div>
+      <div class="kpi j"><div class="n">${consJour}</div><div class="l">Consultations du jour</div></div>
+      <div class="kpi b"><div class="n">${rdvJour.length}</div><div class="l">RDV aujourd'hui</div></div>
+      <div class="kpi r"><div class="n">${impayees}</div><div class="l">Factures impayées</div></div>
+      <div class="kpi g"><div class="n">${money(recMois)}</div><div class="l">Recettes ce mois</div></div>
+      ${alertes?`<div class="kpi r"><div class="n">${alertes}</div><div class="l">Alertes stock</div></div>`:""}
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="ctitle">📅 RDV du jour (${rdvJour.length})</div>
+        <div class="tw"><table><thead><tr><th>Heure</th><th>Patient</th><th>Médecin</th><th>Motif</th></tr></thead><tbody>
+        ${rdvJour.length?rdvJour.map(r=>`<tr><td><b>${esc(r.heureRdv||"—")}</b></td><td>${esc(r.patientId?patName(r.patientId):(r.nomPatient||"—"))}</td><td>${esc(r.medecin||"—")}</td><td>${esc((r.motif||"").slice(0,24))}</td></tr>`).join(""):`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:18px">Aucun RDV aujourd'hui.</td></tr>`}
+        </tbody></table></div></div>
+      <div class="card"><div class="ctitle">👤 Derniers patients</div>
+        <div class="tw"><table><thead><tr><th>N°</th><th>Nom</th><th>Assurance</th></tr></thead><tbody>
+        ${derniers.length?derniers.map(p=>`<tr><td class="pill">${esc(p.num)}</td><td><b>${esc(p.nom)}</b> ${esc(p.prenom)}</td><td class="pill">${esc((p.assurance||"—").slice(0,18))}</td></tr>`).join(""):`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:18px">Aucun patient.</td></tr>`}
+        </tbody></table></div></div>
+    </div>
+    <div class="card"><div class="ctitle">🤝 Assurances partenaires</div>
+      <div>${ASSURANCES.map(a=>`<span class="tag" style="margin:3px"><b>${esc(a.nom)}</b> — ${esc(a.type)} — <b style="color:var(--gold-d)">${a.taux}% PEC</b></span>`).join("")}</div></div>`;
+}
+
+/* ============ PATIENTS ============ */
+let pSearch="";
+function vPatients(){
+  const q=pSearch.toLowerCase();
+  const list=DB.patients.filter(p=>!q||[p.nom,p.prenom,p.tel,p.num].join(" ").toLowerCase().includes(q));
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Patients</h1><div class="s">${DB.patients.length} patient(s)</div></div>
+      <button class="btn p" onclick="editPatient()">+ Nouveau patient</button></div>
+    <div class="search"><input id="pq" placeholder="Rechercher nom, téléphone, N°..." value="${esc(pSearch)}" oninput="pSearch=this.value;const p=this.selectionStart;vPatients();const e=document.getElementById('pq');if(e){e.focus();e.setSelectionRange(p,p);}"></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>N°</th><th>Nom & Prénom</th><th>Sexe</th><th>Téléphone</th><th>Assurance</th><th>PEC</th><th></th></tr></thead><tbody>
+      ${list.length?list.slice().reverse().map(p=>`<tr>
+        <td class="pill">${esc(p.num)}</td>
+        <td><b>${esc(p.nom)}</b> ${esc(p.prenom)}</td>
+        <td><span class="badge ${p.sexe==="F"?"bj":"bb"}">${p.sexe==="F"?"F":"M"}</span></td>
+        <td>${esc(p.tel||"—")}</td>
+        <td class="pill">${esc((p.assurance||"—").slice(0,20))}</td>
+        <td><b style="color:${p.tauxPEC>0?'var(--ok)':'var(--muted)'}">${p.tauxPEC||0}%</b></td>
+        <td style="white-space:nowrap">
+          <button class="btn sm" onclick="editPatient('${p.id}')">Modifier</button>
+          <button class="btn sm gold" onclick="route('consultations');setTimeout(()=>editConsult(null,'${p.id}'),50)">Consulter</button>
+          ${SESSION.role==="Directeur"?`<button class="btn sm dgr" onclick="delPatient('${p.id}')">Suppr.</button>`:""}
+        </td></tr>`).join(""):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucun patient.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+function editPatient(id){
+  const p=id?DB.patients.find(x=>x.id===id):{num:nextNumPreview("PAT","patient"),nom:"",prenom:"",sexe:"M",naissance:"",tel:"",adresse:"",profession:"",assurance:"CNAMGS",numAssurance:"",tauxPEC:80,groupe:"",allergies:"",antecedents:""};
+  const opt=ASSURANCES.map(a=>`<option value="${esc(a.nom)}" data-t="${a.taux}" ${p.assurance===a.nom?"selected":""}>${esc(a.nom)} (${a.taux}%)</option>`).join("");
+  openModal(id?"Modifier le patient":"Nouveau patient",`
+    <div class="row">
+      <div class="fld"><label>Nom *</label><input id="f_nom" value="${esc(p.nom)}" style="text-transform:uppercase"></div>
+      <div class="fld"><label>Prénom</label><input id="f_prenom" value="${esc(p.prenom)}"></div>
+      <div class="fld"><label>Sexe</label><select id="f_sexe"><option value="M" ${p.sexe==="M"?"selected":""}>Masculin</option><option value="F" ${p.sexe==="F"?"selected":""}>Féminin</option></select></div>
+      <div class="fld"><label>Date de naissance</label><input id="f_naissance" type="date" value="${esc(p.naissance||"")}"></div>
+      <div class="fld"><label>Téléphone</label><input id="f_tel" value="${esc(p.tel||"")}"></div>
+      <div class="fld"><label>Profession</label><input id="f_prof" value="${esc(p.profession||"")}"></div>
+      <div class="fld full"><label>Adresse / Quartier</label><input id="f_adr" value="${esc(p.adresse||"")}"></div>
+      <div class="fld"><label>Assurance</label><select id="f_assur" onchange="const o=this.options[this.selectedIndex];document.getElementById('f_taux').value=o.dataset.t">${opt}</select></div>
+      <div class="fld"><label>N° adhérent</label><input id="f_numass" value="${esc(p.numAssurance||"")}"></div>
+      <div class="fld"><label>Taux PEC (%)</label><input id="f_taux" type="number" value="${p.tauxPEC||0}"></div>
+      <div class="fld"><label>Groupe sanguin</label><select id="f_grp">${["","A+","A-","B+","B-","AB+","AB-","O+","O-"].map(g=>`<option ${p.groupe===g?"selected":""}>${g}</option>`).join("")}</select></div>
+      <div class="fld full"><label>Allergies</label><input id="f_all" value="${esc(p.allergies||"")}"></div>
+      <div class="fld full"><label>Antécédents</label><input id="f_ant" value="${esc(p.antecedents||"")}"></div>
+    </div>`, ()=>{
+      const nom=val("f_nom"); if(!nom){toast("Le nom est obligatoire.");return;}
+      const o={nom,prenom:val("f_prenom"),sexe:val("f_sexe"),naissance:val("f_naissance"),tel:val("f_tel"),profession:val("f_prof"),
+        adresse:val("f_adr"),assurance:val("f_assur"),numAssurance:val("f_numass"),tauxPEC:+val("f_taux")||0,groupe:val("f_grp"),
+        allergies:val("f_all"),antecedents:val("f_ant")};
+      if(id){ Object.assign(DB.patients.find(x=>x.id===id),o); } else { o.id=uid("p"); o.num=nextNum("PAT","patient"); o.createdAt=nowISO(); DB.patients.push(o); }
+      saveDB(); closeModal(); toast("Patient enregistré."); vPatients();
+    });
+}
+function nextNumPreview(prefix,seqKey){ return prefix+"-"+new Date().getFullYear()+"-"+String(DB.seq[seqKey]||1).padStart(5,"0"); }
+function delPatient(id){ if(confirm("Supprimer ce patient ?")){ DB.patients=DB.patients.filter(x=>x.id!==id); saveDB(); vPatients(); } }
+
+/* ============ CONSULTATIONS ============ */
+function vConsultations(){
+  const list=DB.consultations.slice().reverse();
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Consultations</h1><div class="s">${DB.consultations.length} consultation(s)</div></div>
+      <button class="btn p" onclick="editConsult()">+ Nouvelle consultation</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>N°</th><th>Patient</th><th>Motif</th><th>Diagnostic</th><th>Médecin</th><th>Date</th><th></th></tr></thead><tbody>
+      ${list.length?list.map(c=>`<tr>
+        <td class="pill">${esc(c.num)}</td><td>${esc(patName(c.patientId))}</td>
+        <td>${esc((c.motif||"").slice(0,24))}</td><td class="pill">${esc((c.diagnostic||"—").slice(0,26))}</td>
+        <td>${esc(c.medecin||"—")}</td><td class="pill">${fdate(c.date)}</td>
+        <td><button class="btn sm gold" onclick="route('factures');setTimeout(()=>editFacture(null,'${c.patientId}','${c.id}'),50)">Facturer</button></td>
+      </tr>`).join(""):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucune consultation.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+function editConsult(id,patientId){
+  const c=id?DB.consultations.find(x=>x.id===id):{patientId:patientId||"",medecin:medDefaut(),motif:"",diagnostic:"",traitement:"",observations:"",tension:"",temp:"",poids:"",taille:""};
+  const patOpt=DB.patients.map(p=>`<option value="${p.id}" ${c.patientId===p.id?"selected":""}>${esc(p.num)} — ${esc(p.nom)} ${esc(p.prenom)}</option>`).join("");
+  const pathos=DB.pathologies.filter(p=>p.actif).map(p=>`<option value="${esc(p.nom)}">`).join("");
+  openModal("Nouvelle consultation",`
+    <div class="row">
+      <div class="fld full"><label>Patient *</label><select id="c_pat"><option value="">— Sélectionner —</option>${patOpt}</select></div>
+      <div class="fld"><label>Médecin</label><input id="c_med" value="${esc(c.medecin||"")}"></div>
+      <div class="fld"><label>Motif *</label><input id="c_motif" value="${esc(c.motif||"")}"></div>
+    </div>
+    <div class="ctitle" style="margin-top:14px">Paramètres vitaux</div>
+    <div class="row">
+      <div class="fld"><label>Tension</label><input id="c_tension" placeholder="12/8"></div>
+      <div class="fld"><label>Température °C</label><input id="c_temp" placeholder="37.5"></div>
+      <div class="fld"><label>Poids (kg)</label><input id="c_poids"></div>
+      <div class="fld"><label>Taille (cm)</label><input id="c_taille"></div>
+    </div>
+    <div class="ctitle" style="margin-top:14px">Diagnostic & traitement</div>
+    <div class="row">
+      <div class="fld full"><label>Pathologie (liste)</label><input id="c_patho" list="pathoList" placeholder="Choisir une pathologie..." onchange="const t=document.getElementById('c_diag');if(this.value){t.value=t.value?(t.value+', '+this.value):this.value;this.value='';}"><datalist id="pathoList">${pathos}</datalist></div>
+      <div class="fld full"><label>Diagnostic</label><textarea id="c_diag" rows="2">${esc(c.diagnostic||"")}</textarea></div>
+      <div class="fld full"><label>Traitement prescrit</label><textarea id="c_trait" rows="2">${esc(c.traitement||"")}</textarea></div>
+      <div class="fld full"><label>Observations</label><textarea id="c_obs" rows="2">${esc(c.observations||"")}</textarea></div>
+    </div>`, ()=>{
+      const pat=val("c_pat"); if(!pat){toast("Sélectionnez un patient.");return;}
+      if(!val("c_motif")){toast("Le motif est obligatoire.");return;}
+      const o={patientId:pat,medecin:val("c_med"),motif:val("c_motif"),diagnostic:val("c_diag"),traitement:val("c_trait"),
+        observations:val("c_obs"),tension:val("c_tension"),temp:val("c_temp"),poids:val("c_poids"),taille:val("c_taille")};
+      if(id){ Object.assign(DB.consultations.find(x=>x.id===id),o); }
+      else { o.id=uid("c"); o.num=nextNum("CONS","cons"); o.date=nowISO(); o.statut="Terminée"; DB.consultations.push(o); }
+      saveDB(); closeModal(); toast("Consultation enregistrée."); vConsultations();
+    });
+}
+
+/* ============ RENDEZ-VOUS ============ */
+function vRdv(){
+  const list=DB.rdv.slice().reverse();
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Rendez-vous</h1><div class="s">${DB.rdv.length} RDV</div></div>
+      <button class="btn p" onclick="editRdv()">+ Nouveau RDV</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Date</th><th>Heure</th><th>Patient</th><th>Médecin</th><th>Motif</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${list.length?list.map(r=>`<tr>
+        <td class="pill">${fdate(r.dateRdv)}</td><td><b>${esc(r.heureRdv||"—")}</b></td>
+        <td>${esc(r.patientId?patName(r.patientId):(r.nomPatient||"—"))}</td><td>${esc(r.medecin||"—")}</td>
+        <td>${esc((r.motif||"").slice(0,22))}</td>
+        <td><span class="badge ${r.statut==="Honoré"?"bg":r.statut==="Annulé"?"br":"bgy"}">${esc(r.statut||"Prévu")}</span></td>
+        <td><button class="btn sm" onclick="cycleRdv('${r.id}')">Statut ▸</button></td>
+      </tr>`).join(""):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucun RDV.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+function editRdv(){
+  const patOpt=DB.patients.map(p=>`<option value="${p.id}">${esc(p.nom)} ${esc(p.prenom)}</option>`).join("");
+  openModal("Nouveau rendez-vous",`
+    <div class="row">
+      <div class="fld full"><label>Patient (si inscrit)</label><select id="r_pat"><option value="">— Sans dossier —</option>${patOpt}</select></div>
+      <div class="fld"><label>Nom (si non inscrit)</label><input id="r_nom"></div>
+      <div class="fld"><label>Médecin</label><input id="r_med" value="${esc(medDefaut())}"></div>
+      <div class="fld"><label>Date *</label><input id="r_date" type="date" value="${todayISO()}"></div>
+      <div class="fld"><label>Heure</label><input id="r_heure" type="time"></div>
+      <div class="fld full"><label>Motif *</label><input id="r_motif"></div>
+    </div>`, ()=>{
+      if(!val("r_date")||!val("r_motif")){toast("Date et motif obligatoires.");return;}
+      DB.rdv.push({id:uid("r"),patientId:val("r_pat"),nomPatient:val("r_nom"),medecin:val("r_med"),dateRdv:val("r_date"),heureRdv:val("r_heure"),motif:val("r_motif"),statut:"Prévu"});
+      saveDB(); closeModal(); toast("RDV enregistré."); vRdv();
+    });
+}
+function cycleRdv(id){ const r=DB.rdv.find(x=>x.id===id); const seq=["Prévu","Confirmé","Honoré","Annulé"]; r.statut=seq[(seq.indexOf(r.statut)+1)%seq.length]; saveDB(); vRdv(); }
+
+/* ============ HOSPITALISATIONS ============ */
+function vHospi(){
+  const list=DB.hospi.slice().reverse();
+  const patOpt=DB.patients.map(p=>`<option value="${p.id}">${esc(p.num)} — ${esc(p.nom)} ${esc(p.prenom)}</option>`).join("");
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Hospitalisations</h1><div class="s">${DB.hospi.filter(h=>h.statut==="En cours").length} en cours</div></div></div>
+    <div class="card"><div class="ctitle">+ Nouvelle admission</div>
+      <div class="row">
+        <div class="fld"><label>Patient *</label><select id="h_pat"><option value="">—</option>${patOpt}</select></div>
+        <div class="fld"><label>N° Chambre</label><input id="h_ch"></div>
+        <div class="fld"><label>Type</label><select id="h_type"><option>Commune</option><option>Privée</option><option>Soins intensifs</option></select></div>
+        <div class="fld"><label>Motif *</label><input id="h_motif"></div>
+        <div class="fld"><label>Médecin</label><input id="h_med" value="${esc(medDefaut())}"></div>
+      </div>
+      <button class="btn p" style="margin-top:12px" onclick="addHospi()">Admettre</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Patient</th><th>Chambre</th><th>Type</th><th>Motif</th><th>Entrée</th><th>Sortie</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${list.length?list.map(h=>`<tr>
+        <td>${esc(patName(h.patientId))}</td><td><b>${esc(h.chambre||"—")}</b></td><td>${esc(h.typeChambre)}</td>
+        <td>${esc((h.motif||"").slice(0,20))}</td><td class="pill">${fdate(h.dateEntree)}</td><td class="pill">${h.dateSortie?fdate(h.dateSortie):"—"}</td>
+        <td><span class="badge ${h.statut==="En cours"?"bj":"bg"}">${esc(h.statut)}</span></td>
+        <td>${h.statut==="En cours"?`<button class="btn sm" onclick="sortirHospi('${h.id}')">Sortie</button>`:""}</td>
+      </tr>`).join(""):`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px">Aucune hospitalisation.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+function addHospi(){ const pat=val("h_pat"); if(!pat||!val("h_motif")){toast("Patient et motif obligatoires.");return;}
+  DB.hospi.push({id:uid("h"),patientId:pat,chambre:val("h_ch"),typeChambre:val("h_type"),motif:val("h_motif"),medecin:val("h_med"),dateEntree:nowISO(),dateSortie:null,statut:"En cours"});
+  saveDB(); toast("Patient admis."); vHospi(); }
+function sortirHospi(id){ if(confirm("Enregistrer la sortie ?")){ const h=DB.hospi.find(x=>x.id===id); h.dateSortie=nowISO(); h.statut="Sorti"; saveDB(); vHospi(); } }
+
+/* ============ PATHOLOGIES ============ */
+function vPathologies(){
+  const cats={}; DB.pathologies.forEach(p=>cats[p.cat]=(cats[p.cat]||0)+1);
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Pathologies</h1><div class="s">${DB.pathologies.length} pathologie(s)</div></div></div>
+    <div class="card"><div class="ctitle">+ Ajouter une pathologie</div>
+      <div class="row">
+        <div class="fld"><label>Nom *</label><input id="pa_nom"></div>
+        <div class="fld"><label>Catégorie</label><select id="pa_cat">${["Générale","Infectieuse","Chronique","Respiratoire","ORL","Dermatologie","Ophtalmologie","Traumatologie","Maternité","Pédiatrie","Cardiologie","Autre"].map(c=>`<option>${c}</option>`).join("")}</select></div>
+      </div><button class="btn p" style="margin-top:12px" onclick="addPatho()">Ajouter</button></div>
+    <div class="kpis">${Object.entries(cats).map(([c,n])=>`<div class="kpi j"><div class="n">${n}</div><div class="l">${esc(c)}</div></div>`).join("")}</div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Pathologie</th><th>Catégorie</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${DB.pathologies.slice().sort((a,b)=>a.cat.localeCompare(b.cat)||a.nom.localeCompare(b.nom)).map(p=>`<tr>
+        <td><b>${esc(p.nom)}</b></td><td><span class="badge bb">${esc(p.cat)}</span></td>
+        <td><span class="badge ${p.actif?"bg":"bgy"}">${p.actif?"Actif":"Inactif"}</span></td>
+        <td><button class="btn sm" onclick="togglePatho('${p.id}')">${p.actif?"Désactiver":"Activer"}</button>
+        ${SESSION.role==="Directeur"?`<button class="btn sm dgr" onclick="delPatho('${p.id}')">Suppr.</button>`:""}</td>
+      </tr>`).join("")}
+    </tbody></table></div></div>`;
+}
+function addPatho(){ const nom=val("pa_nom"); if(!nom){toast("Le nom est obligatoire.");return;} DB.pathologies.push({id:uid("pa"),nom,cat:val("pa_cat"),actif:true}); saveDB(); toast("Pathologie ajoutée."); vPathologies(); }
+function togglePatho(id){ const p=DB.pathologies.find(x=>x.id===id); p.actif=!p.actif; saveDB(); vPathologies(); }
+function delPatho(id){ if(confirm("Supprimer ?")){ DB.pathologies=DB.pathologies.filter(x=>x.id!==id); saveDB(); vPathologies(); } }
+</script>
+<script>
+/* ============ FACTURES ============ */
+function factStats(){
+  const mois=DB.factures.filter(f=>sameMonth(f.date));
+  return {totalMois:mois.reduce((s,f)=>s+(+f.montantTotal||0),0), encaisse:mois.reduce((s,f)=>s+(+f.montantPaye||0),0),
+    impayees:DB.factures.filter(f=>f.statut!=="Réglé").length, reste:DB.factures.reduce((s,f)=>s+(+f.resteDu||0),0)};
+}
+function vFactures(){
+  const s=factStats(); const list=DB.factures.slice().reverse();
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Factures</h1><div class="s">${DB.factures.length} facture(s)</div></div>
+      <button class="btn p" onclick="editFacture()">+ Nouvelle facture</button></div>
+    <div class="kpis">
+      <div class="kpi j"><div class="n">${money(s.totalMois)}</div><div class="l">Facturé ce mois</div></div>
+      <div class="kpi g"><div class="n">${money(s.encaisse)}</div><div class="l">Encaissé ce mois</div></div>
+      <div class="kpi r"><div class="n">${s.impayees}</div><div class="l">Impayées</div></div>
+      <div class="kpi r"><div class="n">${money(s.reste)}</div><div class="l">Reste à payer</div></div>
+    </div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>N°</th><th>Patient</th><th>Assurance</th><th>Total</th><th>Part patient</th><th>Payé</th><th>Reste</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${list.length?list.map(f=>`<tr>
+        <td class="pill">${esc(f.num)}</td><td>${esc(patName(f.patientId))}</td><td class="pill">${esc((f.assurance||"—").slice(0,16))}</td>
+        <td><b>${money(f.montantTotal)}</b></td><td>${money(f.partPatient)}</td><td style="color:var(--ok)">${money(f.montantPaye)}</td>
+        <td style="color:${f.resteDu>0?'var(--red)':'var(--ok)'};font-weight:700">${money(f.resteDu)}</td>
+        <td><span class="badge ${f.statut==="Réglé"?"bg":"br"}">${esc(f.statut)}</span></td>
+        <td style="white-space:nowrap"><button class="btn sm" onclick="printFacture('${f.id}')">🖨</button>
+        ${f.statut!=="Réglé"?`<button class="btn sm gold" onclick="payer('${f.id}')">Payer</button>`:""}</td>
+      </tr>`).join(""):`<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Aucune facture.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+function editFacture(id,patientId,consId){
+  const patOpt=DB.patients.map(p=>`<option value="${p.id}" data-assur="${esc(p.assurance||"")}" data-taux="${p.tauxPEC||0}" ${patientId===p.id?"selected":""}>${esc(p.num)} — ${esc(p.nom)} ${esc(p.prenom)}</option>`).join("");
+  const cats=[...new Set(ACTES.map(a=>a.cat))];
+  const lignes=cats.map(cat=>`<div style="font-size:11px;color:var(--gold-d);font-weight:700;margin:8px 0 4px">${esc(cat)}</div>`+
+    ACTES.filter(a=>a.cat===cat).map(a=>`<div class="frow" data-prix="${a.prix}">
+      <span style="font-size:12px">${esc(a.nom)} <span class="pill">(${esc(a.code)})</span></span>
+      <input type="number" class="fqte" value="0" min="0" style="width:70px" oninput="calcFact()">
+      <input type="number" class="fpu" value="${a.prix}" min="0" style="width:100px" oninput="calcFact()">
+      <input type="hidden" class="fcode" value="${esc(a.code)}"><input type="hidden" class="fdesc" value="${esc(a.nom)}">
+    </div>`).join("")).join("");
+  openModal("Nouvelle facture",`
+    <div class="row">
+      <div class="fld"><label>Patient *</label><select id="fa_pat" onchange="const o=this.options[this.selectedIndex];document.getElementById('fa_assur').value=o.dataset.assur||'CNAMGS';document.getElementById('fa_taux').value=o.dataset.taux||0;calcFact()"><option value="">—</option>${patOpt}</select></div>
+      <div class="fld"><label>Assurance</label><input id="fa_assur" readonly></div>
+      <div class="fld"><label>Taux PEC (%)</label><input id="fa_taux" type="number" value="0" oninput="calcFact()"></div>
+      <div class="fld"><label>Type</label><select id="fa_type"><option>Consultation</option><option>Hospitalisation</option><option>Laboratoire</option><option>Imagerie</option><option>Pharmacie</option><option>Soins</option><option>Maternité</option><option>Autre</option></select></div>
+    </div>
+    <div class="ctitle" style="margin-top:12px">Actes & prestations</div>
+    <div style="max-height:230px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px">${lignes}</div>
+    <div class="row" style="margin-top:12px">
+      <div class="fld"><label>Mode de paiement</label><select id="fa_mode"><option>Espèces</option><option>Airtel Money</option><option>Moov Money</option><option>Assurance</option><option>Chèque</option></select></div>
+      <div class="fld"><label>Montant payé</label><input id="fa_paye" type="number" value="0" min="0" oninput="calcFact()"></div>
+    </div>
+    <div class="card" style="margin-top:12px;background:#f7faf8">
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px">
+        <div>Total actes :</div><div id="fa_total" style="font-weight:700;text-align:right">0</div>
+        <div>Part assurance :</div><div id="fa_pa" style="color:var(--ok);text-align:right">0</div>
+        <div>Part patient :</div><div id="fa_pp" style="color:var(--red);text-align:right">0</div>
+        <div style="font-weight:700">Reste à payer :</div><div id="fa_reste" style="font-weight:800;text-align:right">0</div>
+      </div></div>`, ()=>{
+      const pat=val("fa_pat"); if(!pat){toast("Sélectionnez un patient.");return;}
+      const L=[]; document.querySelectorAll(".frow").forEach(r=>{ const q=+r.querySelector(".fqte").value||0; if(q>0){ const pu=+r.querySelector(".fpu").value||0; L.push({code:r.querySelector(".fcode").value,desc:r.querySelector(".fdesc").value,qte:q,pu,total:q*pu}); }});
+      if(!L.length){toast("Ajoutez au moins un acte (quantité > 0).");return;}
+      const total=L.reduce((s,x)=>s+x.total,0); const taux=+val("fa_taux")||0;
+      const pa=Math.round(total*taux/100), pp=total-pa, paye=+val("fa_paye")||0, reste=Math.max(0,pp-paye);
+      DB.factures.push({id:uid("f"),num:nextNum("FAC","facture"),patientId:pat,consultationId:consId||null,type:val("fa_type"),
+        assurance:val("fa_assur"),tauxPEC:taux,lignes:L,montantTotal:total,partAssurance:pa,partPatient:pp,montantPaye:paye,
+        resteDu:reste,modePaiement:val("fa_mode"),statut:reste<=0?"Réglé":"En attente",date:nowISO(),creePar:SESSION.nom||SESSION.login});
+      saveDB(); closeModal(); toast("Facture créée."); vFactures();
+    },"Créer la facture");
+  setTimeout(calcFact,30);
+}
+function calcFact(){
+  let total=0; document.querySelectorAll(".frow").forEach(r=>{ const q=+r.querySelector(".fqte").value||0, pu=+r.querySelector(".fpu").value||0; total+=q*pu; });
+  const taux=+val("fa_taux")||0, pa=Math.round(total*taux/100), pp=total-pa, paye=+val("fa_paye")||0, reste=Math.max(0,pp-paye);
+  const dv=DB.etab.devise;
+  const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v.toLocaleString("fr-FR")+" "+dv;};
+  set("fa_total",total);set("fa_pa",pa);set("fa_pp",pp);set("fa_reste",reste);
+}
+function payer(id){ const f=DB.factures.find(x=>x.id===id);
+  openModal("Enregistrer un paiement",`<div class="row">
+    <div class="fld"><label>Reste à payer</label><input value="${money(f.resteDu)}" readonly></div>
+    <div class="fld"><label>Montant payé</label><input id="pay_m" type="number" value="${Math.round(f.resteDu)}" min="0"></div>
+    <div class="fld"><label>Mode</label><select id="pay_mode"><option>Espèces</option><option>Airtel Money</option><option>Moov Money</option><option>Assurance</option><option>Chèque</option></select></div>
+  </div>`, ()=>{ const m=+val("pay_m")||0; f.montantPaye+=m; f.resteDu=Math.max(0,f.partPatient-f.montantPaye); f.statut=f.resteDu<=0?"Réglé":"En attente"; f.modePaiement=val("pay_mode"); saveDB(); closeModal(); toast("Paiement enregistré."); vFactures(); });
+}
+function printFacture(id){
+  const f=DB.factures.find(x=>x.id===id); const p=DB.patients.find(x=>x.id===f.patientId)||{}; const e=DB.etab;
+  const w=window.open("","_blank");
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Facture ${esc(f.num)}</title>
+  <style>body{font-family:Arial;color:#111;max-width:800px;margin:0 auto;padding:20px}
+  .fl{height:4px;background:linear-gradient(90deg,#009a44 33%,#D4A017 33% 66%,#003399 66%);margin-bottom:12px}
+  .hd{display:flex;justify-content:space-between;border-bottom:3px solid #0E5A3C;padding-bottom:12px;margin-bottom:14px}
+  .hd .l{display:flex;gap:12px;align-items:center}.hd img{height:64px}.nom{font-size:17px;font-weight:800;color:#0E5A3C;text-transform:uppercase}
+  .med{color:#B8890C;font-weight:700;font-size:13px}.small{font-size:11px;color:#555}
+  .num{font-size:17px;font-weight:800;color:#0E5A3C;font-family:monospace;text-align:right}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin:10px 0}th{background:#0E5A3C;color:#fff;padding:7px;text-align:left}td{padding:6px 7px;border-bottom:1px solid #eee}
+  .tot{background:#f5f7f6;border-radius:8px;padding:12px;margin-top:8px}.tr{display:flex;justify-content:space-between;padding:3px 0}
+  .grand{background:#0E5A3C;color:#fff;padding:8px;border-radius:6px;font-weight:800;margin-top:6px}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:26px}.sig div{border-top:1px solid #333;padding-top:6px;font-size:11px;text-align:center;color:#555}
+  @media print{.np{display:none}}</style></head><body>
+  <button class="np" onclick="window.print()" style="background:#0E5A3C;color:#fff;border:none;padding:9px 18px;border-radius:6px;font-weight:700;margin-bottom:14px;cursor:pointer">🖨 Imprimer</button>
+  <div class="fl"></div>
+  <div class="hd"><div class="l">${e.logo?`<img src="${e.logo}">`:""}<div>
+    <div class="small">RÉPUBLIQUE GABONAISE · Ministère de la Santé</div>
+    <div class="nom">${esc(e.nom||"Structure sanitaire")}</div>
+    <div class="med">${esc(e.titreMedecin||"Médecin Chef")} : ${esc(e.medecinChef||"—")}</div>
+    <div class="small">${esc(e.ville||"")}${e.province?" · "+esc(e.province):""}${e.tel?" · Tél "+esc(e.tel):""}${e.bp?" · BP "+esc(e.bp):""}</div>
+  </div></div>
+  <div style="text-align:right"><div class="small">FACTURE MÉDICALE</div><div class="num">${esc(f.num)}</div><div class="small">Date : ${fdate(f.date)}</div>
+    <div class="small">Assurance : <b>${esc(f.assurance||"Particulier")}</b> — ${f.tauxPEC}% PEC</div></div></div>
+  <div style="font-size:12px;margin-bottom:6px"><b>Patient :</b> ${esc(p.nom||"")} ${esc(p.prenom||"")} · N° ${esc(p.num||"")} · ${p.sexe==="F"?"Féminin":"Masculin"}${p.tel?" · Tél "+esc(p.tel):""}</div>
+  <table><thead><tr><th>Code</th><th>Désignation</th><th>Qté</th><th style="text-align:right">P.U.</th><th style="text-align:right">Total</th></tr></thead><tbody>
+  ${f.lignes.map(l=>`<tr><td>${esc(l.code)}</td><td>${esc(l.desc)}</td><td>${l.qte}</td><td style="text-align:right">${l.pu.toLocaleString("fr-FR")}</td><td style="text-align:right"><b>${l.total.toLocaleString("fr-FR")}</b></td></tr>`).join("")}
+  </tbody></table>
+  <div class="tot">
+    <div class="tr"><span>Total prestations :</span><b>${money(f.montantTotal)}</b></div>
+    <div class="tr"><span>Part assurance (${f.tauxPEC}%) :</span><span style="color:#0E5A3C">- ${money(f.partAssurance)}</span></div>
+    <div class="tr grand"><span>PART PATIENT :</span><span>${money(f.partPatient)}</span></div>
+    <div class="tr"><span>Payé :</span><span>${money(f.montantPaye)}</span></div>
+    <div class="tr" style="font-weight:800"><span>Reste à payer :</span><span>${money(f.resteDu)}</span></div>
+  </div>
+  <div class="sig"><div>Signature patient</div><div>Caissier</div><div>${esc(e.titreMedecin||"Médecin Chef")}<br><b>${esc(e.medecinChef||"")}</b></div></div>
+  <div style="text-align:center;font-size:10px;color:#999;margin-top:16px">${esc(e.nom||"")} · Édité le ${new Date().toLocaleString("fr-FR")} · Pro-Technologie</div>
+  </body></html>`); w.document.close();
+}
+
+/* ============ PHARMACIE ============ */
+function vPharmacie(){
+  const al=DB.pharmacie.filter(p=>(+p.stock||0)<=(+p.stockMin||0));
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Pharmacie / Stock</h1><div class="s">${DB.pharmacie.length} produit(s)</div></div></div>
+    ${al.length?`<div class="trial" style="display:block">⚠️ Alertes stock : ${al.map(p=>esc(p.nom)+" ("+p.stock+")").join(", ")}</div>`:""}
+    <div class="card"><div class="ctitle">+ Ajouter un produit</div>
+      <div class="row">
+        <div class="fld"><label>Produit *</label><input id="ph_nom"></div>
+        <div class="fld"><label>Catégorie</label><select id="ph_cat"><option>Médicament</option><option>Consommable</option><option>Vaccin</option><option>Autre</option></select></div>
+        <div class="fld"><label>Stock</label><input id="ph_stock" type="number" value="0"></div>
+        <div class="fld"><label>Stock min.</label><input id="ph_min" type="number" value="10"></div>
+        <div class="fld"><label>Prix vente</label><input id="ph_prix" type="number" value="0"></div>
+        <div class="fld"><label>Unité</label><input id="ph_unite" value="boîte"></div>
+      </div><button class="btn p" style="margin-top:12px" onclick="addProd()">Ajouter</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Produit</th><th>Catégorie</th><th>Stock</th><th>Min.</th><th>Prix</th><th>État</th><th>Réappro.</th></tr></thead><tbody>
+      ${DB.pharmacie.length?DB.pharmacie.map(p=>`<tr>
+        <td><b>${esc(p.nom)}</b></td><td><span class="badge bb">${esc(p.categorie)}</span></td>
+        <td style="font-weight:800;color:${(+p.stock)<=(+p.stockMin)?'var(--red)':'var(--ok)'}">${p.stock}</td>
+        <td class="pill">${p.stockMin}</td><td>${money(p.prixVente)}</td>
+        <td>${(+p.stock)<=(+p.stockMin)?'<span class="badge br">⚠ Rupture</span>':'<span class="badge bg">OK</span>'}</td>
+        <td><input type="number" id="rea_${p.id}" placeholder="Qté" style="width:64px;padding:4px 6px;border:1px solid var(--line);border-radius:6px"> <button class="btn sm" onclick="reappro('${p.id}')">+ Stock</button></td>
+      </tr>`).join(""):`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Aucun produit.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+function addProd(){ const nom=val("ph_nom"); if(!nom){toast("Le nom est obligatoire.");return;} DB.pharmacie.push({id:uid("ph"),nom,categorie:val("ph_cat"),stock:+val("ph_stock")||0,stockMin:+val("ph_min")||0,prixVente:+val("ph_prix")||0,unite:val("ph_unite")}); saveDB(); toast("Produit ajouté."); vPharmacie(); }
+function reappro(id){ const q=+val("rea_"+id)||0; if(q>0){ const p=DB.pharmacie.find(x=>x.id===id); p.stock=(+p.stock||0)+q; saveDB(); vPharmacie(); } }
+
+/* ============ RAPPORTS ============ */
+function vRapports(){
+  const mois=DB.factures.filter(f=>sameMonth(f.date));
+  const parAssur={}, parType={};
+  DB.factures.forEach(f=>{ parAssur[f.assurance]=parAssur[f.assurance]||{nb:0,total:0,pec:0}; parAssur[f.assurance].nb++; parAssur[f.assurance].total+=+f.montantTotal||0; parAssur[f.assurance].pec+=+f.partAssurance||0;
+    parType[f.type]=parType[f.type]||{nb:0,total:0}; parType[f.type].nb++; parType[f.type].total+=+f.montantTotal||0; });
+  const patMois=DB.patients.filter(p=>sameMonth(p.createdAt)).length;
+  const consMois=DB.consultations.filter(c=>sameMonth(c.date)).length;
+  const parPatho={}; DB.consultations.forEach(c=>{ (c.diagnostic||"").split(",").forEach(d=>{ d=d.trim(); if(d){ parPatho[d]=(parPatho[d]||0)+1; } }); });
+  const topPatho=Object.entries(parPatho).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Rapports & statistiques</h1></div></div>
+    <div class="kpis">
+      <div class="kpi v"><div class="n">${patMois}</div><div class="l">Nouveaux patients (mois)</div></div>
+      <div class="kpi b"><div class="n">${consMois}</div><div class="l">Consultations (mois)</div></div>
+      <div class="kpi g"><div class="n">${money(mois.reduce((s,f)=>s+(+f.montantPaye||0),0))}</div><div class="l">Recettes (mois)</div></div>
+      <div class="kpi r"><div class="n">${money(DB.factures.reduce((s,f)=>s+(+f.resteDu||0),0))}</div><div class="l">Impayés en cours</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="ctitle">Recettes par assurance</div><div class="tw"><table><thead><tr><th>Assurance</th><th>Nb</th><th>Total</th><th>Part PEC</th></tr></thead><tbody>
+      ${Object.entries(parAssur).map(([k,v])=>`<tr><td>${esc(k||"—")}</td><td><b>${v.nb}</b></td><td>${money(v.total)}</td><td style="color:var(--ok)">${money(v.pec)}</td></tr>`).join("")||`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">Aucune donnée.</td></tr>`}
+      </tbody></table></div></div>
+      <div class="card"><div class="ctitle">Pathologies les plus fréquentes</div><div class="tw"><table><thead><tr><th>Pathologie</th><th>Cas</th></tr></thead><tbody>
+      ${topPatho.map(([k,v])=>`<tr><td>${esc(k)}</td><td><b>${v}</b></td></tr>`).join("")||`<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:16px">Aucune donnée.</td></tr>`}
+      </tbody></table></div></div>
+    </div>
+    <div class="card"><div class="ctitle">Recettes par type de prestation</div><div class="tw"><table><thead><tr><th>Type</th><th>Nb</th><th>Total</th></tr></thead><tbody>
+    ${Object.entries(parType).map(([k,v])=>`<tr><td><span class="badge bb">${esc(k)}</span></td><td><b>${v.nb}</b></td><td>${money(v.total)}</td></tr>`).join("")||`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:16px">Aucune donnée.</td></tr>`}
+    </tbody></table></div></div>`;
+}
+
+/* ============ UTILISATEURS ============ */
+async function vUsersNet(){
+  let users=[];
+  try{ users=(await netFetch("/api/users")).users; }
+  catch(e){ $("#view").innerHTML='<div class="card">Impossible de charger les comptes : '+esc(e.message)+'</div>'; return; }
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Utilisateurs (serveur)</h1><div class="s">${users.length} compte(s) — ces comptes servent à se connecter depuis tous les postes</div></div>
+      <button class="btn p" onclick="editUserNet()">+ Nouveau compte</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${users.map(u=>`<tr><td class="pill">${esc(u.login)}</td><td><b>${esc(u.nom)}</b></td>
+        <td><span class="badge ${u.role==="Directeur"?"bj":"bb"}">${esc(u.role)}</span></td>
+        <td><span class="badge ${u.actif?"bg":"bgy"}">${u.actif?"Actif":"Désactivé"}</span></td>
+        <td><button class="btn sm" onclick="editUserNet(${u.id},'${esc(u.login)}','${esc(u.nom)}','${esc(u.role)}',${u.actif})">Modifier</button></td></tr>`).join("")}
+    </tbody></table></div></div>`;
+}
+function editUserNet(id,login,nom,role,actif){
+  openModal(id?"Modifier le compte":"Nouveau compte",`<div class="row">
+    <div class="fld"><label>Nom *</label><input id="u_nom" value="${esc(nom||"")}"></div>
+    <div class="fld"><label>Identifiant *</label><input id="u_login" value="${esc(login||"")}" ${id?"readonly":""}></div>
+    <div class="fld"><label>Rôle</label><select id="u_role">${ROLES.map(r=>`<option ${role===r?"selected":""}>${r}</option>`).join("")}</select></div>
+    <div class="fld"><label>Mot de passe ${id?"(vide = inchangé)":"*"}</label><input id="u_pwd"></div>
+    ${id?`<div class="fld"><label>Statut</label><select id="u_actif"><option value="1" ${actif?"selected":""}>Actif</option><option value="0" ${actif?"":"selected"}>Désactivé</option></select></div>`:""}
+  </div>`, async ()=>{
+    try{
+      if(id){ const b={nom:val("u_nom"),role:val("u_role"),actif:val("u_actif")==="1"}; if(val("u_pwd"))b.password=val("u_pwd");
+        await netFetch("/api/users/"+id,{method:"POST",body:JSON.stringify(b)}); }
+      else { if(!val("u_login")||!val("u_pwd")){toast("Identifiant et mot de passe obligatoires.");return;}
+        await netFetch("/api/users",{method:"POST",body:JSON.stringify({login:val("u_login"),nom:val("u_nom"),role:val("u_role"),password:val("u_pwd")})}); }
+      closeModal(); toast("Compte enregistré."); vUsersNet();
+    }catch(e){ toast(e.message); }
+  });
+}
+function vUsers(){
+  if(NET.on){ vUsersNet(); return; }
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Utilisateurs</h1><div class="s">${DB.users.length} compte(s)</div></div>
+      <button class="btn p" onclick="editUser()">+ Nouveau compte</button></div>
+    <div class="card"><div class="tw"><table>
+      <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th></th></tr></thead><tbody>
+      ${DB.users.map(u=>`<tr><td class="pill">${esc(u.login)}</td><td><b>${esc(u.nom)}</b></td>
+        <td><span class="badge ${u.role==="Directeur"?"bj":"bb"}">${esc(u.role)}</span></td>
+        <td><button class="btn sm" onclick="editUser('${u.id}')">Modifier</button>
+        ${u.login!=="admin"?`<button class="btn sm dgr" onclick="delUser('${u.id}')">Suppr.</button>`:""}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+}
+function editUser(id){
+  const u=id?DB.users.find(x=>x.id===id):{nom:"",login:"",role:"Médecin",pwd:""};
+  openModal(id?"Modifier le compte":"Nouveau compte",`<div class="row">
+    <div class="fld"><label>Nom *</label><input id="u_nom" value="${esc(u.nom)}"></div>
+    <div class="fld"><label>Identifiant *</label><input id="u_login" value="${esc(u.login)}" ${u.login==="admin"?"readonly":""}></div>
+    <div class="fld"><label>Rôle</label><select id="u_role">${ROLES.map(r=>`<option ${u.role===r?"selected":""}>${r}</option>`).join("")}</select></div>
+    <div class="fld"><label>Mot de passe ${id?"(laisser vide = inchangé)":"*"}</label><input id="u_pwd" value=""></div>
+  </div>`, ()=>{
+    const nom=val("u_nom"), login=val("u_login"); if(!nom||!login){toast("Nom et identifiant obligatoires.");return;}
+    if(id){ const x=DB.users.find(y=>y.id===id); x.nom=nom; x.login=login; x.role=val("u_role"); if(val("u_pwd"))x.pwd=val("u_pwd"); }
+    else { if(DB.users.some(y=>y.login.toLowerCase()===login.toLowerCase())){toast("Cet identifiant existe déjà.");return;} DB.users.push({id:uid("u"),nom,login,role:val("u_role"),pwd:val("u_pwd")||"1234"}); }
+    saveDB(); closeModal(); toast("Compte enregistré."); vUsers();
+  });
+}
+function delUser(id){ if(confirm("Supprimer ce compte ?")){ DB.users=DB.users.filter(x=>x.id!==id); saveDB(); vUsers(); } }
+
+/* ============ PARAMÈTRES ============ */
+function vParams(){
+  const e=DB.etab;
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Paramètres</h1><div class="s">Ces informations apparaissent sur les factures et l'écran de connexion</div></div></div>
+    <div class="card"><div class="ctitle">🏥 Établissement</div>
+      <div class="row">
+        <div class="fld"><label>Nom de la structure *</label><input id="e_nom" value="${esc(e.nom)}"></div>
+        <div class="fld"><label>Ville</label><input id="e_ville" value="${esc(e.ville)}"></div>
+        <div class="fld"><label>Province</label><input id="e_prov" value="${esc(e.province)}"></div>
+        <div class="fld"><label>Boîte postale</label><input id="e_bp" value="${esc(e.bp)}"></div>
+      </div>
+      <div class="ctitle" style="margin-top:14px;color:var(--gold-d)">👨‍⚕️ Responsable médical</div>
+      <div class="row">
+        <div class="fld"><label>Nom du médecin chef *</label><input id="e_med" value="${esc(e.medecinChef)}" placeholder="Ex : BIYOGHO Evrad"></div>
+        <div class="fld"><label>Titre / fonction</label><input id="e_titre" value="${esc(e.titreMedecin||"Médecin Chef")}"></div>
+        <div class="fld"><label>Téléphone principal</label><input id="e_tel" value="${esc(e.tel)}"></div>
+        <div class="fld"><label>Téléphone 2</label><input id="e_tel2" value="${esc(e.tel2)}"></div>
+        <div class="fld"><label>Email</label><input id="e_email" value="${esc(e.email)}"></div>
+        <div class="fld"><label>Devise</label><input id="e_dev" value="${esc(e.devise||"F CFA")}"></div>
+      </div>
+      <div class="ctitle" style="margin-top:14px">🖼 Logo</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <img id="e_logoprev" src="${e.logo||LOGO}" style="width:60px;height:60px;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff">
+        <input type="file" accept="image/*" onchange="chargerLogo(this)">
+        <button class="btn sm" onclick="DB.etab.logo='';document.getElementById('e_logoprev').src=LOGO">Logo par défaut</button>
+      </div>
+      <button class="btn p" style="margin-top:16px" onclick="saveParams()">💾 Enregistrer</button>
+    </div>
+    <div class="card"><div class="ctitle">💾 Sauvegarde des données</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn" onclick="exportDB()">⬇ Exporter (sauvegarde)</button>
+        <label class="btn" style="cursor:pointer">⬆ Importer (restaurer)<input type="file" accept="application/json" style="display:none" onchange="importDB(this)"></label>
+      </div>
+      <div class="s" style="margin-top:8px">Les données sont stockées dans ce navigateur. Exportez régulièrement une sauvegarde.</div>
+    </div>`;
+}
+function chargerLogo(inp){ const f=inp.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ DB.etab.logo=e.target.result; document.getElementById("e_logoprev").src=e.target.result; }; r.readAsDataURL(f); }
+function saveParams(){ const nom=val("e_nom"); if(!nom){toast("Le nom de la structure est obligatoire.");return;}
+  Object.assign(DB.etab,{nom,ville:val("e_ville"),province:val("e_prov"),bp:val("e_bp"),medecinChef:val("e_med"),titreMedecin:val("e_titre"),tel:val("e_tel"),tel2:val("e_tel2"),email:val("e_email"),devise:val("e_dev")||"F CFA"});
+  saveDB(); $("#sideEtab").textContent=DB.etab.nom; if(DB.etab.logo){$("#sideLogo").src=DB.etab.logo;} toast("Paramètres enregistrés."); }
+function exportDB(){ const blob=new Blob([JSON.stringify(DB,null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="241sante_sauvegarde_"+todayISO()+".json"; a.click(); }
+function importDB(inp){ const f=inp.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ try{ DB=JSON.parse(e.target.result); saveDB(); toast("Données restaurées."); showApp(); }catch(err){ toast("Fichier invalide."); } }; r.readAsText(f); }
+
+/* ============ LICENCE (vue interne) ============ */
+function vLicence(){
+  const st=licState();
+  $("#view").innerHTML=`
+    <div class="head"><div><h1>Licence</h1><div class="s">État de la licence du logiciel</div></div></div>
+    <div class="card" style="max-width:520px">
+      <div class="kpi ${st.ok?'g':'r'}" style="margin-bottom:14px"><div class="n" style="font-size:18px">${st.ok?"✔":"✖"} ${esc(st.msg)}</div><div class="l">241 Santé — Pro-Technologie</div></div>
+      ${DB.license.key?`<div class="s" style="margin-bottom:10px">Clé active : <b>${esc(DB.license.key)}</b></div>`:""}
+      <button class="btn gold" onclick="showLicence()">Gérer la licence / Activer une clé</button>
+      <div class="s" style="margin-top:10px">Le générateur de clés (réservé) est accessible depuis l'écran de gestion, protégé par mot de passe.</div>
+      <div style="margin-top:14px;background:#f2f8f4;border:1px solid var(--line);border-radius:12px;padding:12px">
+        <div style="font-size:11px;font-weight:800;color:var(--grn);text-transform:uppercase;letter-spacing:.4px">Activation & assistance — Pro-Technologie</div>
+        <div style="font-size:14px;font-weight:800;margin-top:6px">📞 077 92 54 58 · 066 92 54 58</div>
+        <div style="font-size:12px;margin-top:4px"><a href="mailto:ndongafene@protechnologie.com" style="color:var(--grn);font-weight:700">ndongafene@protechnologie.com</a></div>
+      </div>
+    </div>`;
+}
+window.addEventListener("DOMContentLoaded",boot);
+</script>
+</body></html>
